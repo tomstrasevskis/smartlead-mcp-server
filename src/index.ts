@@ -110,8 +110,16 @@ async function main(): Promise<void> {
       process.exit(1);
     });
 
-    // Start the server
-    await server.connect();
+    // Start the server in the appropriate transport mode
+    const transportMode = process.env.MCP_TRANSPORT || 'stdio';
+
+    if (transportMode === 'streamable-http') {
+      const port = parseInt(process.env.PORT || '8083', 10);
+      const host = process.env.MCP_HOST || '0.0.0.0';
+      await server.connectHttp(port, host);
+    } else {
+      await server.connect();
+    }
   } catch (error) {
     console.error('❌ Failed to start SmartLead MCP Server:', error);
 

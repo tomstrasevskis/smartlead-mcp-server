@@ -29,6 +29,8 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { createServer, IncomingMessage, ServerResponse } from 'http';
 import { SmartLeadClient, SmartLeadError } from './client/index.js';
 import {
   registerCampaignTools,
@@ -370,6 +372,129 @@ export class SmartLeadMCPServer {
         },
       ],
     };
+  }
+
+  /**
+   * Creates a fresh McpServer instance with all tools registered.
+   * Used for HTTP transport where each request needs its own server instance
+   * (the MCP SDK only allows one active connection per McpServer).
+   * The shared SmartLeadClient is reused since it's stateless.
+   * @private
+   */
+  private createFreshMcpServer(): McpServer {
+    const freshServer = new McpServer({
+      name: 'smartlead-mcp-server',
+      version: '1.5.0',
+      description:
+        'Unofficial SmartLead MCP Server - We are partners with SmartLead and love the product!',
+    });
+
+    // Register essential tools
+    registerCampaignTools(
+      freshServer,
+      this.client,
+      this.formatSuccessResponse.bind(this),
+      this.handleError.bind(this)
+    );
+    registerLeadTools(
+      freshServer,
+      this.client,
+      this.formatSuccessResponse.bind(this),
+      this.handleError.bind(this)
+    );
+    registerEmailAccountTools(
+      freshServer,
+      this.client,
+      this.formatSuccessResponse.bind(this),
+      this.handleError.bind(this)
+    );
+    registerStatisticsTools(
+      freshServer,
+      this.client,
+      this.formatSuccessResponse.bind(this),
+      this.handleError.bind(this)
+    );
+
+    // Advanced tools
+    if (process.env.SMARTLEAD_ADVANCED_TOOLS === 'true') {
+      registerSmartDeliveryTools(
+        freshServer,
+        this.client,
+        this.formatSuccessResponse.bind(this),
+        this.handleError.bind(this)
+      );
+      registerAnalyticsTools(
+        freshServer,
+        this.client,
+        this.formatSuccessResponse.bind(this),
+        this.handleError.bind(this)
+      );
+      registerWebhookTools(
+        freshServer,
+        this.client,
+        this.formatSuccessResponse.bind(this),
+        this.handleError.bind(this)
+      );
+    }
+
+    // Admin tools
+    if (process.env.SMARTLEAD_ADMIN_TOOLS === 'true') {
+      registerClientManagementTools(
+        freshServer,
+        this.client,
+        this.formatSuccessResponse.bind(this),
+        this.handleError.bind(this)
+      );
+      registerSmartSendersTools(
+        freshServer,
+        this.client,
+        this.formatSuccessResponse.bind(this),
+        this.handleError.bind(this)
+      );
+    }
+
+    return freshServer;
+  }
+
+  /**
+   * Connects the MCP server via HTTP (Streamable HTTP transport).
+   * Each incoming request gets a fresh McpServer instance with its own transport,
+   * while sharing the same SmartLeadClient for API calls.
+   *
+   * @param port - Port to listen on (default: 8083)
+   * @param host - Host to bind to (default: '0.0.0.0')
+   */
+  async connectHttp(port: number = 8083, host: string = '0.0.0.0'): Promise<void> {
+    console.log(`🚀 Starting SmartLead MCP Server (HTTP) on http://${host}:${port}/mcp`);
+
+    const self = this;
+
+    const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse) => {
+      const url = new URL(req.url!, `http://${req.headers.host}`);
+
+      if (url.pathname === '/health' && req.method === 'GET') {
+        res.writeHead(200, { 'Content-Type': 'text/plain' });
+        res.end('OK');
+        return;
+      }
+
+      if (url.pathname === '/mcp' && (req.method === 'POST' || req.method === 'GET' || req.method === 'DELETE')) {
+        const freshServer = self.createFreshMcpServer();
+        const mcpTransport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: undefined,
+        });
+        await freshServer.connect(mcpTransport);
+        await mcpTransport.handleRequest(req, res);
+        return;
+      }
+
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      res.end('Not Found');
+    });
+
+    httpServer.listen(port, host, () => {
+      console.log(`✅ SmartLead MCP Server (HTTP) running on http://${host}:${port}/mcp`);
+    });
   }
 
   /**
