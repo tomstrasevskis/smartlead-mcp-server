@@ -67,8 +67,23 @@ export class CampaignManagementClient extends BaseSmartLeadClient {
 
   /** POST /campaigns/{campaign_id}/sequences */
   async saveCampaignSequence(campaignId: number, sequences: any[]): Promise<SuccessResponse> {
+    // SmartLead expects a flat format: each variant is a separate entry
+    // with the same seq_number, subject/email_body at the top level.
+    // We accept a nested variants array for usability and flatten here.
+    const flatSequences: any[] = [];
+    for (const seq of sequences) {
+      const { variants, variant_distribution_type, ...seqBase } = seq;
+      if (Array.isArray(variants) && variants.length > 0) {
+        for (const variant of variants) {
+          flatSequences.push({ ...seqBase, ...variant });
+        }
+      } else {
+        flatSequences.push(seqBase);
+      }
+    }
+
     const response = await this.withRetry(
-      () => this.apiClient.post(`/campaigns/${campaignId}/sequences`, { sequences }),
+      () => this.apiClient.post(`/campaigns/${campaignId}/sequences`, { sequences: flatSequences }),
       'save campaign sequence'
     );
     return response.data;
