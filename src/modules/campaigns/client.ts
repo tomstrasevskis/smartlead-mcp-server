@@ -75,7 +75,8 @@ export class CampaignManagementClient extends BaseSmartLeadClient {
       const { variants, variant_distribution_type, ...seqBase } = seq;
       if (Array.isArray(variants) && variants.length > 0) {
         for (const variant of variants) {
-          flatSequences.push({ ...seqBase, ...variant });
+          const { variant_label, ...variantData } = variant;
+          flatSequences.push({ ...seqBase, ...variantData });
         }
       } else {
         flatSequences.push(seqBase);
