@@ -68,7 +68,7 @@ export class CampaignManagementClient extends BaseSmartLeadClient {
   /** POST /campaigns/{campaign_id}/sequences */
   async saveCampaignSequence(campaignId: number, sequences: any[]): Promise<SuccessResponse> {
     const response = await this.withRetry(
-      () => this.apiClient.post(`/campaigns/${campaignId}/sequences`, sequences),
+      () => this.apiClient.post(`/campaigns/${campaignId}/sequences`, { sequences }),
       'save campaign sequence'
     );
     return response.data;
