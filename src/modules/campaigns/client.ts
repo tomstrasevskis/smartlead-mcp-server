@@ -29,10 +29,10 @@ export class CampaignManagementClient extends BaseSmartLeadClient {
     return response.data;
   }
 
-  /** PATCH /campaigns/{campaign_id}/status */
+  /** POST /campaigns/{campaign_id}/status */
   async updateCampaignStatus(campaignId: number, status: string): Promise<SuccessResponse> {
     const response = await this.withRetry(
-      () => this.apiClient.patch(`/campaigns/${campaignId}/status`, { status }),
+      () => this.apiClient.post(`/campaigns/${campaignId}/status`, { status }),
       'update campaign status'
     );
     return response.data;
