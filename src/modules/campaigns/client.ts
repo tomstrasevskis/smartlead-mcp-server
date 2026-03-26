@@ -31,8 +31,10 @@ export class CampaignManagementClient extends BaseSmartLeadClient {
 
   /** POST /campaigns/{campaign_id}/status */
   async updateCampaignStatus(campaignId: number, status: string): Promise<SuccessResponse> {
+    // SmartLead accepts START, not ACTIVE — map for caller convenience
+    const apiStatus = status === 'ACTIVE' ? 'START' : status;
     const response = await this.withRetry(
-      () => this.apiClient.post(`/campaigns/${campaignId}/status`, { status }),
+      () => this.apiClient.post(`/campaigns/${campaignId}/status`, { status: apiStatus }),
       'update campaign status'
     );
     return response.data;

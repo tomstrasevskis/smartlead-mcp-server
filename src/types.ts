@@ -43,7 +43,7 @@ export const ListCampaignsRequestSchema = z.object({
 
 export const UpdateCampaignStatusRequestSchema = z.object({
   campaign_id: z.number().describe('Campaign ID'),
-  status: z.enum(['ACTIVE', 'PAUSED', 'STOPPED']).describe('New campaign status'),
+  status: z.enum(['START', 'ACTIVE', 'PAUSED', 'STOPPED']).describe('New campaign status (ACTIVE is an alias for START)'),
 });
 
 export const UpdateCampaignScheduleRequestSchema = z.object({
